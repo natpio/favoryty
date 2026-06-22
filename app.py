@@ -7,7 +7,7 @@ import json
 # --- KONFIGURACJA STRONY ---
 st.set_page_config(page_title="Terminal Logistyczny", page_icon="✈️", layout="wide", initial_sidebar_state="expanded")
 
-# --- STYLE CSS (MOTYW LUFTHANSA) ---
+# --- STYLE CSS (MOTYW LUFTHANSA + ZAKŁADKI) ---
 st.markdown("""
 <style>
     /* Globalne tło i czcionki */
@@ -21,7 +21,31 @@ st.markdown("""
         letter-spacing: -0.5px;
     }
     
-    /* Karty linków - styl lotniczy/korporacyjny */
+    /* Pasek nawigacji u góry (Tabs) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px;
+        background-color: #E2E6ED;
+        padding: 8px 8px 0 8px;
+        border-radius: 8px 8px 0 0;
+        border-bottom: 3px solid #05164D;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        background-color: #FFFFFF;
+        border-radius: 6px 6px 0 0;
+        color: #05164D;
+        font-weight: 600;
+        padding: 10px 20px;
+        border: 1px solid #D1D6E0;
+        border-bottom: none;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #05164D !important;
+        color: #FFB000 !important;
+        border: 1px solid #05164D;
+    }
+    
+    /* Karty linków */
     .link-card {
         background-color: #FFFFFF;
         border-top: 4px solid #05164D;
@@ -57,7 +81,7 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* Przyciski - żółty akcent */
+    /* Przyciski */
     .btn-open {
         display: inline-block; 
         margin-top: 15px; 
@@ -76,7 +100,6 @@ st.markdown("""
         color: #FFFFFF !important; 
     }
     
-    /* Ukrycie domyślnych obramowań Streamlit */
     div[data-testid="stForm"] { border: 1px solid #E0E0E0; background-color: #FFFFFF; }
 </style>
 """, unsafe_allow_html=True)
@@ -132,6 +155,24 @@ def delete_link(pandas_index):
     sheet.delete_rows(pandas_index + 2)
     st.cache_data.clear()
 
+# Funkcja pomocnicza do renderowania siatki kart
+def render_cards(dataframe):
+    if dataframe.empty:
+        st.info("Brak wpisów w tym sektorze.")
+        return
+        
+    cols = st.columns(3)
+    for idx, row in enumerate(dataframe.itertuples()):
+        with cols[idx % 3]:
+            st.markdown(f"""
+            <div class="link-card">
+                <span class="link-cat">{getattr(row, 'Kategoria', 'Brak')}</span>
+                <span class="link-title">{getattr(row, 'Nazwa', 'Bez nazwy')}</span>
+                <span class="link-url">{str(getattr(row, 'URL', ''))[:45]}...</span><br>
+                <a href="{getattr(row, 'URL', '#')}" target="_blank" class="btn-open">Zaloguj do systemu ➔</a>
+            </div>
+            """, unsafe_allow_html=True)
+
 # Ładowanie danych
 df = load_data()
 
@@ -149,6 +190,8 @@ if menu == "🛫 Tablica Odlotów (Linki)":
     
     if not df.empty:
         filtered_df = df.copy()
+        
+        # Filtrowanie po wyszukiwarce
         if search:
             query = search.lower()
             mask = filtered_df.apply(lambda row: query in str(row.get('Kategoria', '')).lower() or 
@@ -159,18 +202,21 @@ if menu == "🛫 Tablica Odlotów (Linki)":
         if filtered_df.empty:
             st.info("Brak wyników w rejestrze.")
         else:
-            cols = st.columns(3)
-            # Iterujemy z zachowaniem poprawnej struktury po usunięciu duplikatów
-            for idx, row in enumerate(filtered_df.itertuples()):
-                with cols[idx % 3]:
-                    st.markdown(f"""
-                    <div class="link-card">
-                        <span class="link-cat">{getattr(row, 'Kategoria', 'Brak')}</span>
-                        <span class="link-title">{getattr(row, 'Nazwa', 'Bez nazwy')}</span>
-                        <span class="link-url">{str(getattr(row, 'URL', ''))[:45]}...</span><br>
-                        <a href="{getattr(row, 'URL', '#')}" target="_blank" class="btn-open">Zaloguj do systemu ➔</a>
-                    </div>
-                    """, unsafe_allow_html=True)
+            # Tworzenie dynamicznych zakładek na górze
+            categories = sorted([c for c in filtered_df['Kategoria'].unique() if str(c).strip() != ''])
+            tab_titles = ["🌐 Wszystko"] + [f"📁 {cat}" for cat in categories]
+            
+            tabs = st.tabs(tab_titles)
+            
+            # 1. Zakładka ze wszystkimi linkami
+            with tabs[0]:
+                render_cards(filtered_df)
+                
+            # 2. Zakładki dla poszczególnych kategorii
+            for i, cat in enumerate(categories):
+                with tabs[i + 1]:
+                    cat_df = filtered_df[filtered_df['Kategoria'] == cat]
+                    render_cards(cat_df)
     else:
         st.info("Brak wpisów. Przejdź do Odprawy.")
 
@@ -210,7 +256,7 @@ elif menu == "🛠️ Hangar (Usuń Linki)":
     if df.empty or 'Kategoria' not in df.columns:
         st.info("Brak aktywnych linków.")
     else:
-        categories = df['Kategoria'].unique().tolist()
+        categories = sorted([c for c in df['Kategoria'].unique() if str(c).strip() != ''])
         cat_to_edit = st.selectbox("Wybierz sektor roboczy:", categories)
         
         cat_df = df[df['Kategoria'] == cat_to_edit]
@@ -219,7 +265,6 @@ elif menu == "🛠️ Hangar (Usuń Linki)":
             c1, c2 = st.columns([5, 1])
             c1.markdown(f"**{row.get('Nazwa', 'Bez nazwy')}** <br> <small style='color:gray;'>{row.get('URL', '')}</small>", unsafe_allow_html=True)
             
-            # W panelu usuwania używamy domyślnego przycisku Streamlit, ale można nadać mu typ 'primary'
             if c2.button("Usuń", key=f"del_{idx}"):
                 with st.spinner("Wyrejestrowywanie..."):
                     delete_link(idx)
