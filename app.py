@@ -5,29 +5,79 @@ from google.oauth2.service_account import Credentials
 import json
 
 # --- KONFIGURACJA STRONY ---
-st.set_page_config(page_title="Vorteza Links", page_icon="🔗", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Terminal Logistyczny", page_icon="✈️", layout="wide", initial_sidebar_state="expanded")
 
-# --- STYLE CSS ---
+# --- STYLE CSS (MOTYW LUFTHANSA) ---
 st.markdown("""
 <style>
-    h1, h2, h3 { color: #00D2FF; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    /* Globalne tło i czcionki */
+    .stApp {
+        background-color: #F4F5F7;
+    }
+    h1, h2, h3 { 
+        color: #05164D !important; 
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+    
+    /* Karty linków - styl lotniczy/korporacyjny */
     .link-card {
-        background: linear-gradient(145deg, #1E212B, #171920);
-        border-left: 4px solid #00D2FF;
-        border-radius: 8px; padding: 16px; margin-bottom: 15px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s, box-shadow 0.2s;
+        background-color: #FFFFFF;
+        border-top: 4px solid #05164D;
+        padding: 20px; 
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(5, 22, 77, 0.05); 
+        transition: all 0.2s ease-in-out;
     }
-    .link-card:hover { transform: translateY(-4px); box-shadow: 0 6px 15px rgba(0, 210, 255, 0.2); }
-    .link-title { font-size: 1.15rem; font-weight: bold; color: #FFFFFF; margin-bottom: 6px; display: block; }
-    .link-url { font-size: 0.8rem; color: #8C98A4; word-break: break-all; }
-    .link-cat { font-size: 0.75rem; color: #00D2FF; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
+    .link-card:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 8px 15px rgba(5, 22, 77, 0.1); 
+        border-top: 4px solid #FFB000;
+    }
+    .link-title { 
+        font-size: 1.15rem; 
+        font-weight: bold; 
+        color: #05164D; 
+        margin-bottom: 8px; 
+        display: block; 
+    }
+    .link-url { 
+        font-size: 0.8rem; 
+        color: #666666; 
+        word-break: break-all; 
+    }
+    .link-cat { 
+        font-size: 0.7rem; 
+        color: #7A7A7A; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px; 
+        margin-bottom: 12px; 
+        display: block; 
+        font-weight: bold;
+    }
+    
+    /* Przyciski - żółty akcent */
     .btn-open {
-        display: inline-block; margin-top: 12px; padding: 6px 14px;
-        background-color: rgba(0, 210, 255, 0.1); color: #00D2FF !important;
-        border: 1px solid #00D2FF; border-radius: 5px; text-decoration: none !important;
-        font-size: 0.85rem; font-weight: bold; transition: 0.2s;
+        display: inline-block; 
+        margin-top: 15px; 
+        padding: 8px 16px;
+        background-color: #FFB000; 
+        color: #05164D !important;
+        border: none; 
+        text-decoration: none !important;
+        font-size: 0.85rem; 
+        font-weight: bold; 
+        transition: 0.2s;
+        text-align: center;
     }
-    .btn-open:hover { background-color: #00D2FF; color: #12141A !important; }
+    .btn-open:hover { 
+        background-color: #05164D; 
+        color: #FFFFFF !important; 
+    }
+    
+    /* Ukrycie domyślnych obramowań Streamlit */
+    div[data-testid="stForm"] { border: 1px solid #E0E0E0; background-color: #FFFFFF; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,7 +111,13 @@ def load_data():
     try:
         sheet = get_sheet()
         records = sheet.get_all_records()
-        return pd.DataFrame(records)
+        df = pd.DataFrame(records)
+        
+        # USUWANIE DUPLIKATÓW W LOCIE (po adresie URL)
+        if not df.empty and 'URL' in df.columns:
+            df = df.drop_duplicates(subset=['URL'], keep='first')
+            
+        return df
     except Exception as e:
         return pd.DataFrame(columns=["Kategoria", "Nazwa", "URL"])
 
@@ -80,15 +136,15 @@ def delete_link(pandas_index):
 df = load_data()
 
 # --- PASEK BOCZNY ---
-st.sidebar.title("Vorteza Systems")
+st.sidebar.title("✈️ Terminal")
 st.sidebar.markdown("---")
-menu = st.sidebar.radio("Zarządzanie:", ["🔍 Przegląd Linków", "➕ Dodaj Nowy", "🗑️ Usuń Linki"])
+menu = st.sidebar.radio("Nawigacja:", ["🛫 Tablica Odlotów (Linki)", "🛬 Odprawa (Dodaj Nowy)", "🛠️ Hangar (Usuń Linki)"])
 
 # --- WIDOK 1: PRZEGLĄD ---
-if menu == "🔍 Przegląd Linków":
-    st.title("🌌 Baza Zakładek")
+if menu == "🛫 Tablica Odlotów (Linki)":
+    st.title("🛫 Tablica Zakładek")
     
-    search = st.text_input("Wyszukaj:", placeholder="Wpisz słowo kluczowe...")
+    search = st.text_input("Szukaj w rejestrze:", placeholder="Wpisz portal, system awizacyjny, targi...")
     st.markdown("<br>", unsafe_allow_html=True)
     
     if not df.empty:
@@ -101,68 +157,71 @@ if menu == "🔍 Przegląd Linków":
             filtered_df = filtered_df[mask]
         
         if filtered_df.empty:
-            st.info("Brak wyników spełniających kryteria.")
+            st.info("Brak wyników w rejestrze.")
         else:
             cols = st.columns(3)
+            # Iterujemy z zachowaniem poprawnej struktury po usunięciu duplikatów
             for idx, row in enumerate(filtered_df.itertuples()):
                 with cols[idx % 3]:
                     st.markdown(f"""
                     <div class="link-card">
-                        <span class="link-cat">📁 {getattr(row, 'Kategoria', 'Brak')}</span>
+                        <span class="link-cat">{getattr(row, 'Kategoria', 'Brak')}</span>
                         <span class="link-title">{getattr(row, 'Nazwa', 'Bez nazwy')}</span>
-                        <span class="link-url">{str(getattr(row, 'URL', ''))[:40]}...</span><br>
-                        <a href="{getattr(row, 'URL', '#')}" target="_blank" class="btn-open">Otwórz stronę 🚀</a>
+                        <span class="link-url">{str(getattr(row, 'URL', ''))[:45]}...</span><br>
+                        <a href="{getattr(row, 'URL', '#')}" target="_blank" class="btn-open">Zaloguj do systemu ➔</a>
                     </div>
                     """, unsafe_allow_html=True)
     else:
-        st.info("Baza danych jest pusta. Przejdź do zakładki 'Dodaj Nowy'.")
+        st.info("Brak wpisów. Przejdź do Odprawy.")
 
 # --- WIDOK 2: DODAWANIE ---
-elif menu == "➕ Dodaj Nowy":
-    st.title("➕ Dodaj wpis do bazy")
+elif menu == "🛬 Odprawa (Dodaj Nowy)":
+    st.title("🛬 Rejestracja nowego systemu")
     
     existing_categories = df['Kategoria'].unique().tolist() if not df.empty and 'Kategoria' in df.columns else []
     
     with st.form("add_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            nazwa = st.text_input("Nazwa strony")
+            nazwa = st.text_input("Nazwa operacyjna")
             url = st.text_input("Adres URL")
         with col2:
-            nowa_kategoria = st.text_input("Nowa kategoria (wpisz tutaj)")
-            wybrana_kategoria = st.selectbox("Lub wybierz z istniejących:", ["-- Wybierz --"] + existing_categories)
+            nowa_kategoria = st.text_input("Nowa kategoria")
+            wybrana_kategoria = st.selectbox("Lub wybierz z bazy:", ["-- Wybierz --"] + existing_categories)
         
-        submit = st.form_submit_button("Dodaj do Arkusza Google", use_container_width=True)
+        submit = st.form_submit_button("Zatwierdź wpis", use_container_width=True)
         
         if submit:
             kategoria_docelowa = nowa_kategoria if nowa_kategoria else (wybrana_kategoria if wybrana_kategoria != "-- Wybierz --" else "")
             
             if nazwa and url and kategoria_docelowa:
                 if not url.startswith("http"): url = "https://" + url
-                with st.spinner("Zapisywanie w bazie Arkuszy Google..."):
+                with st.spinner("Przetwarzanie..."):
                     add_link(kategoria_docelowa, nazwa, url)
-                st.success(f"Dodano '{nazwa}' do bazy!")
+                st.success(f"System '{nazwa}' został zarejestrowany!")
                 st.rerun()
             else:
-                st.warning("Wypełnij wszystkie pola (Nazwa, URL, Kategoria).")
+                st.warning("Uzupełnij wszystkie dane.")
 
 # --- WIDOK 3: USUWANIE ---
-elif menu == "🗑️ Usuń Linki":
-    st.title("🗑️ Czyszczenie bazy")
+elif menu == "🛠️ Hangar (Usuń Linki)":
+    st.title("🛠️ Zarządzanie flotą linków")
     
     if df.empty or 'Kategoria' not in df.columns:
-        st.info("Baza jest pusta.")
+        st.info("Brak aktywnych linków.")
     else:
         categories = df['Kategoria'].unique().tolist()
-        cat_to_edit = st.selectbox("Filtruj obszar do usunięcia:", categories)
+        cat_to_edit = st.selectbox("Wybierz sektor roboczy:", categories)
         
         cat_df = df[df['Kategoria'] == cat_to_edit]
         
         for idx, row in cat_df.iterrows():
             c1, c2 = st.columns([5, 1])
-            c1.markdown(f"**{row.get('Nazwa', 'Bez nazwy')}** <br> <small>{row.get('URL', '')}</small>", unsafe_allow_html=True)
+            c1.markdown(f"**{row.get('Nazwa', 'Bez nazwy')}** <br> <small style='color:gray;'>{row.get('URL', '')}</small>", unsafe_allow_html=True)
+            
+            # W panelu usuwania używamy domyślnego przycisku Streamlit, ale można nadać mu typ 'primary'
             if c2.button("Usuń", key=f"del_{idx}"):
-                with st.spinner("Usuwanie z Arkusza Google..."):
+                with st.spinner("Wyrejestrowywanie..."):
                     delete_link(idx)
-                st.success("Trwale usunięto z bazy!")
+                st.success("Wpis usunięto z serwera!")
                 st.rerun()
