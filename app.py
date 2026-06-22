@@ -249,7 +249,7 @@ if st.sidebar.button("🔒 Zamknij bezpieczną sesję", use_container_width=True
 
 # --- WIDOK 1: TABLICA ODLOTÓW ---
 if menu == "🛫 Tablica Odlotów (Rejestr)":
-    st.title("🛫 Globalna Tablica Monitoringu Linków")
+    st.title("🛫 Główny Hub Nawigacyjny")
     search = st.text_input("🔍 Wyszukiwarka operacyjna (targi, portale, spedycje, awizacje):", placeholder="Wpisz szukaną frazę...")
     st.markdown("<br>", unsafe_allow_html=True)
     
