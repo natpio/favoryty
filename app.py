@@ -7,7 +7,11 @@ import json
 # --- KONFIGURACJA STRONY ---
 st.set_page_config(page_title="Terminal Logistyczny", page_icon="✈️", layout="wide", initial_sidebar_state="expanded")
 
-# --- STYLE CSS (MOTYW LUFTHANSA + TŁO NAWIGACYJNE) ---
+# --- ZARZĄDZANIE SESJĄ (AUTORYZACJA) ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+# --- STYLE CSS (MOTYW LUFTHANSA) ---
 st.markdown("""
 <style>
     /* Wzbogacone tło: Lotnicza siatka nawigacyjna (kropki) na jasnoszarym tle */
@@ -51,7 +55,7 @@ st.markdown("""
         box-shadow: 0 -4px 10px rgba(5, 22, 77, 0.1);
     }
     
-    /* Karty linków - efekt unoszenia się na siatce */
+    /* Karty linków */
     .link-card {
         background-color: rgba(255, 255, 255, 0.95);
         border-top: 4px solid #05164D;
@@ -67,56 +71,24 @@ st.markdown("""
         box-shadow: 0 12px 20px rgba(5, 22, 77, 0.15); 
         border-top: 4px solid #FFB000;
     }
-    .link-title { 
-        font-size: 1.15rem; 
-        font-weight: bold; 
-        color: #05164D; 
-        margin-bottom: 8px; 
-        display: block; 
-    }
-    .link-url { 
-        font-size: 0.8rem; 
-        color: #666666; 
-        word-break: break-all; 
-    }
-    .link-cat { 
-        font-size: 0.7rem; 
-        color: #7A7A7A; 
-        text-transform: uppercase; 
-        letter-spacing: 1.5px; 
-        margin-bottom: 12px; 
-        display: block; 
-        font-weight: bold;
-    }
+    .link-title { font-size: 1.15rem; font-weight: bold; color: #05164D; margin-bottom: 8px; display: block; }
+    .link-url { font-size: 0.8rem; color: #666666; word-break: break-all; }
+    .link-cat { font-size: 0.7rem; color: #7A7A7A; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: block; font-weight: bold; }
     
     /* Przyciski operacyjne */
     .btn-open {
-        display: inline-block; 
-        margin-top: 15px; 
-        padding: 8px 18px;
-        background-color: #FFB000; 
-        color: #05164D !important;
-        border: none; 
-        border-radius: 4px;
-        text-decoration: none !important;
-        font-size: 0.85rem; 
-        font-weight: bold; 
-        transition: 0.2s;
-        text-align: center;
+        display: inline-block; margin-top: 15px; padding: 8px 18px;
+        background-color: #FFB000; color: #05164D !important;
+        border: none; border-radius: 4px; text-decoration: none !important;
+        font-size: 0.85rem; font-weight: bold; transition: 0.2s; text-align: center;
         box-shadow: 0 2px 4px rgba(255, 176, 0, 0.3);
     }
-    .btn-open:hover { 
-        background-color: #05164D; 
-        color: #FFFFFF !important; 
-        box-shadow: 0 4px 8px rgba(5, 22, 77, 0.3);
-    }
+    .btn-open:hover { background-color: #05164D; color: #FFFFFF !important; box-shadow: 0 4px 8px rgba(5, 22, 77, 0.3); }
     
-    div[data-testid="stForm"] { 
-        border: 1px solid #E0E0E0; 
-        background-color: rgba(255, 255, 255, 0.95); 
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    }
+    div[data-testid="stForm"] { border: 1px solid #E0E0E0; background-color: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    
+    /* Panel Logowania */
+    .login-container { max-width: 400px; margin: 100px auto; padding: 30px; background-color: white; border-top: 5px solid #05164D; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -131,19 +103,60 @@ def get_gspread_client():
     try:
         creds_json = st.secrets["GCP_CREDENTIALS"]
         creds_dict = json.loads(creds_json)
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return gspread.authorize(creds)
     except Exception as e:
         st.error("Błąd uwierzytelniania. Skonfiguruj poprawnie 'GCP_CREDENTIALS' w Streamlit Secrets.")
         st.stop()
 
+# Pobieranie poprawnego hasła z arkusza 'Ustawienia'
+@st.cache_data(ttl=60)
+def get_system_password():
+    try:
+        client = get_gspread_client()
+        # Otwieramy zakładkę z ustawieniami i czytamy komórkę B1
+        sheet = client.open_by_key(SHEET_ID).worksheet("Ustawienia")
+        return str(sheet.acell('B1').value)
+    except gspread.exceptions.WorksheetNotFound:
+        st.error("Błąd krytyczny: Brak zakładki 'Ustawienia' w Arkuszu Google. Utwórz ją i dodaj hasło w B1.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Nie można pobrać hasła: {e}")
+        st.stop()
+
+# --- EKRAN LOGOWANIA ---
+if not st.session_state.authenticated:
+    st.markdown("""
+        <div class="login-container">
+            <h2 style="color: #05164D; margin-bottom: 5px;">✈️ VORTEZA</h2>
+            <p style="color: #7A7A7A; font-weight: bold; letter-spacing: 2px; font-size: 0.8rem; margin-bottom: 25px;">LOGISTICS TERMINAL</p>
+            <h4 style="margin-bottom: 20px;">Dostęp Ograniczony</h4>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        with st.form("login_form"):
+            password_input = st.text_input("Wprowadź kod autoryzacyjny:", type="password")
+            submit_button = st.form_submit_button("Autoryzuj", use_container_width=True)
+            
+            if submit_button:
+                correct_password = get_system_password()
+                if password_input == correct_password:
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("❌ Odmowa dostępu. Nieprawidłowy kod.")
+    
+    # Zatrzymanie dalszego renderowania aplikacji, dopóki hasło nie zostanie wpisane
+    st.stop()
+
+# --- RESZTA APLIKACJI (TYLKO DLA ZALOGOWANYCH) ---
+
 def get_sheet():
     client = get_gspread_client()
-    return client.open_by_key(SHEET_ID).sheet1
+    return client.open_by_key(SHEET_ID).sheet1 # Dane główne zawsze czytamy z pierwszego arkusza
 
 @st.cache_data(ttl=10)
 def load_data():
@@ -197,6 +210,11 @@ st.sidebar.markdown(
 )
 
 menu = st.sidebar.radio("Nawigacja:", ["🛫 Tablica Odlotów (Linki)", "🛬 Odprawa (Dodaj Nowy)", "🛠️ Hangar (Usuń Linki)"])
+
+st.sidebar.markdown("---")
+if st.sidebar.button("🔒 Wyloguj sesję", use_container_width=True):
+    st.session_state.authenticated = False
+    st.rerun()
 
 # --- WIDOK 1: PRZEGLĄD ---
 if menu == "🛫 Tablica Odlotów (Linki)":
