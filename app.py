@@ -7,56 +7,64 @@ import json
 # --- KONFIGURACJA STRONY ---
 st.set_page_config(page_title="Terminal Logistyczny", page_icon="✈️", layout="wide", initial_sidebar_state="expanded")
 
-# --- STYLE CSS (MOTYW LUFTHANSA + ZAKŁADKI) ---
+# --- STYLE CSS (MOTYW LUFTHANSA + TŁO NAWIGACYJNE) ---
 st.markdown("""
 <style>
-    /* Globalne tło i czcionki */
+    /* Wzbogacone tło: Lotnicza siatka nawigacyjna (kropki) na jasnoszarym tle */
     .stApp {
         background-color: #F4F5F7;
+        background-image: radial-gradient(#CBD2DF 1px, transparent 1px);
+        background-size: 24px 24px;
     }
+    
     h1, h2, h3 { 
         color: #05164D !important; 
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
         font-weight: 700;
         letter-spacing: -0.5px;
     }
-    
+
     /* Pasek nawigacji u góry (Tabs) */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
-        background-color: #E2E6ED;
-        padding: 8px 8px 0 8px;
-        border-radius: 8px 8px 0 0;
+        gap: 6px;
+        background-color: rgba(226, 230, 237, 0.8);
+        padding: 10px 10px 0 10px;
+        border-radius: 12px 12px 0 0;
         border-bottom: 3px solid #05164D;
+        backdrop-filter: blur(5px);
     }
     .stTabs [data-baseweb="tab"] {
         height: 45px;
         background-color: #FFFFFF;
-        border-radius: 6px 6px 0 0;
+        border-radius: 8px 8px 0 0;
         color: #05164D;
         font-weight: 600;
-        padding: 10px 20px;
+        padding: 10px 24px;
         border: 1px solid #D1D6E0;
         border-bottom: none;
+        transition: all 0.2s;
     }
     .stTabs [aria-selected="true"] {
         background-color: #05164D !important;
         color: #FFB000 !important;
         border: 1px solid #05164D;
+        box-shadow: 0 -4px 10px rgba(5, 22, 77, 0.1);
     }
     
-    /* Karty linków */
+    /* Karty linków - efekt unoszenia się na siatce */
     .link-card {
-        background-color: #FFFFFF;
+        background-color: rgba(255, 255, 255, 0.95);
         border-top: 4px solid #05164D;
-        padding: 20px; 
+        border-radius: 8px;
+        padding: 22px; 
         margin-bottom: 20px;
-        box-shadow: 0 2px 5px rgba(5, 22, 77, 0.05); 
+        box-shadow: 0 4px 15px rgba(5, 22, 77, 0.08); 
+        backdrop-filter: blur(10px);
         transition: all 0.2s ease-in-out;
     }
     .link-card:hover { 
-        transform: translateY(-2px); 
-        box-shadow: 0 8px 15px rgba(5, 22, 77, 0.1); 
+        transform: translateY(-5px); 
+        box-shadow: 0 12px 20px rgba(5, 22, 77, 0.15); 
         border-top: 4px solid #FFB000;
     }
     .link-title { 
@@ -81,26 +89,34 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* Przyciski */
+    /* Przyciski operacyjne */
     .btn-open {
         display: inline-block; 
         margin-top: 15px; 
-        padding: 8px 16px;
+        padding: 8px 18px;
         background-color: #FFB000; 
         color: #05164D !important;
         border: none; 
+        border-radius: 4px;
         text-decoration: none !important;
         font-size: 0.85rem; 
         font-weight: bold; 
         transition: 0.2s;
         text-align: center;
+        box-shadow: 0 2px 4px rgba(255, 176, 0, 0.3);
     }
     .btn-open:hover { 
         background-color: #05164D; 
         color: #FFFFFF !important; 
+        box-shadow: 0 4px 8px rgba(5, 22, 77, 0.3);
     }
     
-    div[data-testid="stForm"] { border: 1px solid #E0E0E0; background-color: #FFFFFF; }
+    div[data-testid="stForm"] { 
+        border: 1px solid #E0E0E0; 
+        background-color: rgba(255, 255, 255, 0.95); 
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -135,16 +151,12 @@ def load_data():
         sheet = get_sheet()
         records = sheet.get_all_records()
         df = pd.DataFrame(records)
-        
-        # USUWANIE DUPLIKATÓW W LOCIE (po adresie URL)
         if not df.empty and 'URL' in df.columns:
             df = df.drop_duplicates(subset=['URL'], keep='first')
-            
         return df
     except Exception as e:
         return pd.DataFrame(columns=["Kategoria", "Nazwa", "URL"])
 
-# --- FUNKCJE BAZODANOWE ---
 def add_link(kategoria, nazwa, url):
     sheet = get_sheet()
     sheet.append_row([kategoria, nazwa, url])
@@ -155,7 +167,6 @@ def delete_link(pandas_index):
     sheet.delete_rows(pandas_index + 2)
     st.cache_data.clear()
 
-# Funkcja pomocnicza do renderowania siatki kart
 def render_cards(dataframe):
     if dataframe.empty:
         st.info("Brak wpisów w tym sektorze.")
@@ -173,25 +184,29 @@ def render_cards(dataframe):
             </div>
             """, unsafe_allow_html=True)
 
-# Ładowanie danych
 df = load_data()
 
 # --- PASEK BOCZNY ---
-st.sidebar.title("✈️ Terminal")
-st.sidebar.markdown("---")
+st.sidebar.markdown(
+    """
+    <div style="background-color: #05164D; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <h2 style="color: #FFB000 !important; margin: 0; padding: 0;">✈️ VORTEZA</h2>
+        <span style="color: #FFFFFF; font-size: 0.8rem; letter-spacing: 2px;">LOGISTICS TERMINAL</span>
+    </div>
+    """, unsafe_allow_html=True
+)
+
 menu = st.sidebar.radio("Nawigacja:", ["🛫 Tablica Odlotów (Linki)", "🛬 Odprawa (Dodaj Nowy)", "🛠️ Hangar (Usuń Linki)"])
 
 # --- WIDOK 1: PRZEGLĄD ---
 if menu == "🛫 Tablica Odlotów (Linki)":
-    st.title("🛫 Tablica Zakładek")
     
-    search = st.text_input("Szukaj w rejestrze:", placeholder="Wpisz portal, system awizacyjny, targi...")
+    search = st.text_input("🔍 Rejestr globalny:", placeholder="Wpisz portal, system awizacyjny, targi...")
     st.markdown("<br>", unsafe_allow_html=True)
     
     if not df.empty:
         filtered_df = df.copy()
         
-        # Filtrowanie po wyszukiwarce
         if search:
             query = search.lower()
             mask = filtered_df.apply(lambda row: query in str(row.get('Kategoria', '')).lower() or 
@@ -202,17 +217,14 @@ if menu == "🛫 Tablica Odlotów (Linki)":
         if filtered_df.empty:
             st.info("Brak wyników w rejestrze.")
         else:
-            # Tworzenie dynamicznych zakładek na górze
             categories = sorted([c for c in filtered_df['Kategoria'].unique() if str(c).strip() != ''])
-            tab_titles = ["🌐 Wszystko"] + [f"📁 {cat}" for cat in categories]
+            tab_titles = ["🌐 Cała Sieć"] + [f"📁 {cat}" for cat in categories]
             
             tabs = st.tabs(tab_titles)
             
-            # 1. Zakładka ze wszystkimi linkami
             with tabs[0]:
                 render_cards(filtered_df)
                 
-            # 2. Zakładki dla poszczególnych kategorii
             for i, cat in enumerate(categories):
                 with tabs[i + 1]:
                     cat_df = filtered_df[filtered_df['Kategoria'] == cat]
@@ -239,7 +251,6 @@ elif menu == "🛬 Odprawa (Dodaj Nowy)":
         
         if submit:
             kategoria_docelowa = nowa_kategoria if nowa_kategoria else (wybrana_kategoria if wybrana_kategoria != "-- Wybierz --" else "")
-            
             if nazwa and url and kategoria_docelowa:
                 if not url.startswith("http"): url = "https://" + url
                 with st.spinner("Przetwarzanie..."):
@@ -264,7 +275,6 @@ elif menu == "🛠️ Hangar (Usuń Linki)":
         for idx, row in cat_df.iterrows():
             c1, c2 = st.columns([5, 1])
             c1.markdown(f"**{row.get('Nazwa', 'Bez nazwy')}** <br> <small style='color:gray;'>{row.get('URL', '')}</small>", unsafe_allow_html=True)
-            
             if c2.button("Usuń", key=f"del_{idx}"):
                 with st.spinner("Wyrejestrowywanie..."):
                     delete_link(idx)
