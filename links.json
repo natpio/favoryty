@@ -1,0 +1,29 @@
+{
+  "Bookowanie slotów": [
+    {"title": "AMSTERDAM RAI", "url": "https://www.rai.nl/en/exhibiting/logistics#verkeersreglement"},
+    {"nazwa": "BERLIN MESSE", "url": "https://visifair-bookings.messe-berlin.de/Security/login?BackURL=de_DE/events&l=pl_PL"},
+    {"title": "Dortmund Messe", "url": "https://osc.messe-dortmund.de/oidc/auth/realms/whdo/protocol/openid-connect/auth"},
+    {"title": "FRANKFURT MESSE", "url": "https://einfahrt.messefrankfurt.com/inWeb/ees/deliverer.html"},
+    {"title": "NORYMBERGA SLOTY", "url": "https://nuernbergmesse.transit-fair.com/"},
+    {"title": "Schenker LIFT", "url": "https://www.schenkerlift.com/user/login"},
+    {"title": "SYNCROSUPPLY CENTRAL", "url": "https://central.dev.syncro.supply/gui/#/login"}
+  ],
+  "Parkingi": [
+    {"title": "SNAP - więcej niż sposób płacenia", "url": "https://snapacc.com/pl/"},
+    {"title": "TRAVIS Road Services", "url": "https://www.yourtravis.com/"},
+    {"title": "Parkingi Wiedeń (ASFINAG)", "url": "https://www.asfinag.at/en/asfinag-app/"}
+  ],
+  "Logistyka & Narzędzia": [
+    {"title": "DPD online", "url": "https://online.dpd.com.pl/logout.do"},
+    {"title": "Globkurier.pl", "url": "https://www.globkurier.pl/order"},
+    {"title": "Karnety ATA (KIG)", "url": "https://ata.kig.pl/carnet-applications"},
+    {"title": "Kalkulator opłat drogowych IMPARGO", "url": "https://apps.impargo.de/user/login"},
+    {"title": "Śledzenie TRONIK", "url": "https://tronik.atrax4.com/#/fleet/overview"}
+  ],
+  "Wewnętrzne aplikacje": [
+    {"title": "Kalkulatorek", "url": "file:///C:/Users/Piotr%20Dukiel/SynologyDrive/kalkulatorek%20gotowy.html"},
+    {"title": "Tablica SQM", "url": "https://transport.sqm.eu/lista"},
+    {"title": "SQM VECTURA", "url": "https://vecturasqmtransporty.streamlit.app/"},
+    {"title": "ICE BARCELONA streamlit", "url": "https://sqm-logistyka-rbwcgzpqbdojmahqg7yn9v.streamlit.app/"}
+  ]
+}
